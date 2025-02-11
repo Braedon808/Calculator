@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Performance & Off-Road Modification Calculator</title>
+  <style>
+    /* Basic Reset */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body { font-family: Arial, sans-serif; background: #f9f9f9; line-height: 1.6; color: #333; }
+    header { background: #2c3e50; color: #fff; padding: 20px; text-align: center; }
+    nav { background: #34495e; padding: 10px; text-align: center; }
+    nav a {
+      color: #ecf0f1; margin: 0 15px; text-decoration: none; font-weight: bold;
+      cursor: pointer;
+    }
+    nav a:hover { text-decoration: underline; }
+
+    section { padding: 20px; display: none; }
+    section.active { display: block; }
+
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; }
+    input[type="text"], input[type="number"], textarea, select {
+      width: 100%; padding: 8px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px;
+    }
+    button { padding: 10px 15px; font-size: 1em; background: #27ae60; border: none; color: #fff; cursor: pointer; margin-right: 10px; }
+    button:hover { background: #1e8449; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    table, th, td { border: 1px solid #ccc; }
+    th, td { padding: 10px; text-align: center; }
+    th { background: #ecf0f1; }
+
+    /* Off-Road Visual Feedback */
+    #offRoadDiagram { width: 100%; max-width: 400px; margin: 20px auto; display: block; }
+    
+    /* Responsive Design */
+    @media (max-width: 600px) {
+      nav a { display: block; margin: 5px 0; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Performance & Off-Road Modification Calculator</h1>
+    <p>Calculate your C32 AMG performance modifications and W163 off-road geometry</p>
+  </header>
+  <nav>
+    <a id="amgNav" onclick="toggleSection('amgSection')">C32 AMG Calculator</a>
+    <a id="w163Nav" onclick="toggleSection('w163Section')">W163 Off-Road Calculator</a>
+  </nav>
+  
+  <!-- C32 AMG Performance Section -->
+  <section id="amgSection" class="active">
+    <h2>C32 AMG Performance Calculator</h2>
+    <p>Enter your modification details (as percentage improvements) for each performance metric. (Use text if needed; dropdown suggestions can be added later.)</p>
+    <form id="amgForm">
+      <div class="form-group">
+        <label for="brakeImp">Braking Distance Improvement (%)</label>
+        <input type="number" id="brakeImp" name="brakeImp" step="0.1" value="5">
+      </div>
+      <div class="form-group">
+        <label for="accelImp">0-60 Time Improvement (%)</label>
+        <input type="number" id="accelImp" name="accelImp" step="0.1" value="7">
+      </div>
+      <div class="form-group">
+        <label for="quarterImp">1/4 Mile ET Improvement (%)</label>
+        <input type="number" id="quarterImp" name="quarterImp" step="0.1" value="6">
+      </div>
+      <div class="form-group">
+        <label for="trapImp">Trap Speed Increase (%)</label>
+        <input type="number" id="trapImp" name="trapImp" step="0.1" value="3">
+      </div>
+      <button type="button" onclick="calculateAMGPerformance()">Calculate Performance</button>
+    </form>
+    <div id="amgResults">
+      <!-- The results table will be injected here -->
+    </div>
+  </section>
+  
+  <!-- W163 Off-Road Section -->
+  <section id="w163Section">
+    <h2>W163 Off-Road Calculator</h2>
+    <p>Input your off-road modifications to see the effects on tire size, lift height, and calculated off-road angles. (Angles are computed with simple approximations.)</p>
+    <form id="w163Form">
+      <div class="form-group">
+        <label for="tireDiameter">Tire Diameter (inches)</label>
+        <input type="number" id="tireDiameter" name="tireDiameter" step="0.1" value="30">
+      </div>
+      <div class="form-group">
+        <label for="liftHeight">Lift Height (inches)</label>
+        <input type="number" id="liftHeight" name="liftHeight" step="0.1" value="0">
+      </div>
+      <div class="form-group">
+        <label for="groundClearance">Ground Clearance (inches)</label>
+        <input type="number" id="groundClearance" name="groundClearance" step="0.1" value="8">
+      </div>
+      <button type="button" onclick="calculateW163OffRoad()">Calculate Off-Road Metrics</button>
+      <button type="button" onclick="saveW163Config()">Save Configuration</button>
+      <button type="button" onclick="loadW163Config()">Load Configuration</button>
+    </form>
+    <div id="w163Results">
+      <!-- The results table will be injected here -->
+    </div>
+    <svg id="offRoadDiagram" viewBox="0 0 400 200">
+      <!-- A simple diagram; this can be enhanced further -->
+      <line x1="50" y1="150" x2="350" y2="150" stroke="#333" stroke-width="2"/>
+      <rect x="100" y="100" width="200" height="50" fill="#3498db"/>
+      <text x="200" y="90" text-anchor="middle" fill="#333" font-size="16">W163</text>
+      <!-- Angle arcs (placeholders) -->
+      <path id="entryAngleArc" d="" stroke="#e74c3c" fill="none" stroke-width="2"/>
+      <text id="entryAngleText" x="70" y="130" fill="#e74c3c" font-size="14"></text>
+    </svg>
+  </section>
+  
+  <script>
+    // Toggle between sections
+    function toggleSection(sectionId) {
+      document.querySelectorAll('section').forEach(sec => {
+        sec.classList.remove('active');
+      });
+      document.getElementById(sectionId).classList.add('active');
+    }
+    
+    // C32 AMG Performance Calculator
+    function calculateAMGPerformance() {
+      // Documented stock values (example numbers)
+      const stock = {
+        braking: 120,   // feet
+        zeroToSixty: 5.5, // seconds
+        quarterMile: 13.5, // seconds
+        trapSpeed: 105   // mph
+      };
+      
+      // Get improvement percentages from user input
+      let brakeImp = parseFloat(document.getElementById('brakeImp').value) || 0;
+      let accelImp = parseFloat(document.getElementById('accelImp').value) || 0;
+      let quarterImp = parseFloat(document.getElementById('quarterImp').value) || 0;
+      let trapImp = parseFloat(document.getElementById('trapImp').value) || 0;
+      
+      // Calculate modified values. (For braking, acceleration, and quarter mile, lower is better.)
+      const modified = {
+        braking: (stock.braking * (1 - brakeImp/100)).toFixed(2),
+        zeroToSixty: (stock.zeroToSixty * (1 - accelImp/100)).toFixed(2),
+        quarterMile: (stock.quarterMile * (1 - quarterImp/100)).toFixed(2),
+        trapSpeed: (stock.trapSpeed * (1 + trapImp/100)).toFixed(2)
+      };
+      
+      // Create a results table (side-by-side comparison)
+      let html = `<table>
+        <tr>
+          <th>Metric</th>
+          <th>Stock Value</th>
+          <th>Modified Value</th>
+        </tr>
+        <tr>
+          <td>Braking Distance (ft)</td>
+          <td>${stock.braking}</td>
+          <td>${modified.braking}</td>
+        </tr>
+        <tr>
+          <td>0-60 Time (sec)</td>
+          <td>${stock.zeroToSixty}</td>
+          <td>${modified.zeroToSixty}</td>
+        </tr>
+        <tr>
+          <td>1/4 Mile ET (sec)</td>
+          <td>${stock.quarterMile}</td>
+          <td>${modified.quarterMile}</td>
+        </tr>
+        <tr>
+          <td>Trap Speed (mph)</td>
+          <td>${stock.trapSpeed}</td>
+          <td>${modified.trapSpeed}</td>
+        </tr>
+      </table>`;
+      
+      document.getElementById('amgResults').innerHTML = html;
+    }
+    
+    // W163 Off-Road Calculator
+    function calculateW163OffRoad() {
+      // Get inputs
+      let tireDiameter = parseFloat(document.getElementById('tireDiameter').value) || 0;
+      let liftHeight = parseFloat(document.getElementById('liftHeight').value) || 0;
+      let groundClearance = parseFloat(document.getElementById('groundClearance').value) || 0;
+      
+      // Calculate tire radius
+      let tireRadius = tireDiameter / 2;
+      
+      // For demonstration, we use a simple geometric model.
+      // Example formulas (in degrees):
+      // Entry (approach) angle = arctan((ground clearance + liftHeight) / tireRadius)
+      let entryAngle = Math.atan((groundClearance + liftHeight) / tireRadius) * (180/Math.PI);
+      // For breakover and departure angles, use similar approximations:
+      let breakoverAngle = entryAngle - 5; // placeholder adjustment
+      let departureAngle = entryAngle; // assuming similar to entry angle
+      
+      // Create a results table
+      let html = `<table>
+        <tr>
+          <th>Metric</th>
+          <th>Value</th>
+        </tr>
+        <tr>
+          <td>Entry (Approach) Angle (°)</td>
+          <td>${entryAngle.toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td>Breakover Angle (°)</td>
+          <td>${breakoverAngle.toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td>Departure Angle (°)</td>
+          <td>${departureAngle.toFixed(2)}</td>
+        </tr>
+      </table>`;
+      document.getElementById('w163Results').innerHTML = html;
+      
+      // Update the SVG diagram for visual feedback.
+      // For simplicity, we’ll draw an arc for the entry angle.
+      // The arc will start at point (50,150) with a radius of 50.
+      let startX = 50, startY = 150, radius = 50;
+      let endX = startX + radius * Math.cos(-entryAngle * Math.PI/180);
+      let endY = startY + radius * Math.sin(-entryAngle * Math.PI/180);
+      // The SVG arc path command. (Large arc flag and sweep flag are set for illustration.)
+      let largeArcFlag = entryAngle > 180 ? 1 : 0;
+      let d = `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}`;
+      document.getElementById('entryAngleArc').setAttribute("d", d);
+      document.getElementById('entryAngleText').textContent = `Entry Angle: ${entryAngle.toFixed(1)}°`;
+    }
+    
+    // Save and Load configuration for W163 using localStorage
+    function saveW163Config() {
+      const config = {
+        tireDiameter: document.getElementById('tireDiameter').value,
+        liftHeight: document.getElementById('liftHeight').value,
+        groundClearance: document.getElementById('groundClearance').value
+      };
+      localStorage.setItem('w163Config', JSON.stringify(config));
+      alert("W163 configuration saved!");
+    }
+    
+    function loadW163Config() {
+      let config = localStorage.getItem('w163Config');
+      if (config) {
+        config = JSON.parse(config);
+        document.getElementById('tireDiameter').value = config.tireDiameter;
+        document.getElementById('liftHeight').value = config.liftHeight;
+        document.getElementById('groundClearance').value = config.groundClearance;
+        calculateW163OffRoad();
+        alert("W163 configuration loaded!");
+      } else {
+        alert("No configuration found.");
+      }
+    }
+    
+    // Debug logging (for development)
+    console.log("Website loaded. Ready for input.");
+  </script>
+</body>
+</html>
